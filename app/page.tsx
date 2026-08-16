@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { ColorMode, PrintSpec, Urgency } from "@/lib/types";
 
 type Step = "upload" | "review" | "success";
@@ -31,6 +32,8 @@ export default function Home() {
     duplex: true,
     urgency: "standard",
   });
+
+  const router = useRouter();
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -105,11 +108,9 @@ export default function Home() {
         throw new Error(data.error || "Failed to confirm");
       }
 
-      setSuccessData({
-        cost: data.costInRupees,
-        upiReference: data.upiReference,
-      });
-      setStep("success");
+        // Redirect to payment page where the user selects payment method.
+        // Payment page will call the payment API and update job status on success.
+        router.push(`/payment?id=${data.job.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -169,7 +170,7 @@ export default function Home() {
                     type="text"
                     value={studentName}
                     onChange={(e) => setStudentName(e.target.value)}
-                    placeholder="e.g. Gandi"
+                    placeholder="e.g. RajiniKanth"
                     className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                   />
                 </div>

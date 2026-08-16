@@ -60,9 +60,11 @@ export async function POST(request: NextRequest) {
     };
 
     createJob(job);
-    const queued = updateJobStatus(id, "queued");
 
-    return NextResponse.json({ job: queued, upiReference, costInRupees });
+    // Return the created job and payment info. Do NOT auto-queue —
+    // caller should redirect user to a payment flow and update status
+    // once payment succeeds.
+    return NextResponse.json({ job, upiReference, costInRupees });
   } catch (error) {
     console.error("Confirm error:", error);
     return NextResponse.json(
