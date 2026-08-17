@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createJob, updateJobStatus } from "@/lib/db";
+import { createJob } from "@/lib/db";
 import { calculateCost } from "@/lib/pricing";
 import type { ColorMode, PrintJob, Urgency } from "@/lib/types";
 import { randomUUID } from "crypto";
@@ -19,6 +19,7 @@ export async function POST(request: NextRequest) {
     const {
       studentName,
       fileName,
+      fileNames,
       pageCount,
       copies,
       colorMode,
@@ -26,7 +27,18 @@ export async function POST(request: NextRequest) {
       urgency,
     } = body;
 
-    if (!studentName || !fileName || !pageCount) {
+    const normalizedFileNames = Array.isArray(fileNames)
+      ? fileNames.filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+      : [];
+    const resolvedFileName =
+      typeof fileName === "string" && fileName.trim().length > 0
+        ? fileName
+        : normalizedFileNames[0] ?? "Uploaded PDF";
+    const resolvedFileCount = normalizedFileNames.length || 1;
+    const displayFileName =
+      resolvedFileCount > 1 ? `${resolvedFileCount} files` : resolvedFileName;
+
+    if (!studentName || !pageCount) {
       return NextResponse.json(
         { error: "Missing required job fields" },
         { status: 400 },
@@ -47,7 +59,9 @@ export async function POST(request: NextRequest) {
     const job: PrintJob = {
       id,
       studentName,
-      fileName,
+      fileName: displayFileName,
+      fileNames: normalizedFileNames.length > 0 ? normalizedFileNames : [resolvedFileName],
+      fileCount: resolvedFileCount,
       pageCount: Number(pageCount),
       copies: Number(copies) || 1,
       colorMode: (colorMode as ColorMode) || "bw",

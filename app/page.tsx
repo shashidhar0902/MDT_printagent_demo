@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ColorMode, PrintSpec, Urgency } from "@/lib/types";
 
@@ -11,11 +11,16 @@ interface PreviewData {
   pageCount: number;
   spec: PrintSpec;
   fileName: string;
+  fileCount?: number;
+  files?: Array<{
+    fileName: string;
+    pageCount: number;
+  }>;
 }
 
 export default function Home() {
   const [step, setStep] = useState<Step>("upload");
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [instructions, setInstructions] = useState("");
   const [studentName, setStudentName] = useState("");
   const [preview, setPreview] = useState<PreviewData | null>(null);
@@ -37,9 +42,12 @@ export default function Home() {
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    const dropped = e.dataTransfer.files[0];
-    if (dropped?.type === "application/pdf" || dropped?.name.endsWith(".pdf")) {
-      setFile(dropped);
+    const dropped = Array.from(e.dataTransfer.files).filter(
+      (currentFile) =>
+        currentFile.type === "application/pdf" || currentFile.name.endsWith(".pdf"),
+    );
+    if (dropped.length > 0) {
+      setFiles(dropped);
       setError("");
     } else {
       setError("Please drop a PDF file.");
@@ -47,8 +55,8 @@ export default function Home() {
   }, []);
 
   const handleGetQuote = async () => {
-    if (!file) {
-      setError("Please upload a PDF first.");
+    if (files.length === 0) {
+      setError("Please upload at least one PDF first.");
       return;
     }
     if (!instructions.trim()) {
@@ -61,7 +69,9 @@ export default function Home() {
 
     try {
       const formData = new FormData();
-      formData.append("file", file);
+      files.forEach((file) => {
+        formData.append("files", file);
+      });
       formData.append("instructions", instructions);
 
       const res = await fetch("/api/parse", { method: "POST", body: formData });
@@ -97,6 +107,7 @@ export default function Home() {
         body: JSON.stringify({
           studentName,
           fileName: preview.fileName,
+          fileNames: preview.files?.map((item) => item.fileName) ?? [],
           pageCount: preview.pageCount,
           ...spec,
         }),
@@ -120,7 +131,7 @@ export default function Home() {
 
   const reset = () => {
     setStep("upload");
-    setFile(null);
+    setFiles([]);
     setInstructions("");
     setPreview(null);
     setSuccessData(null);
@@ -187,20 +198,31 @@ export default function Home() {
                     id="file-input"
                     type="file"
                     accept=".pdf,application/pdf"
+                    multiple
                     className="hidden"
                     onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) {
-                        setFile(f);
+                      const selectedFiles = Array.from(e.target.files ?? []).filter(
+                        (file) =>
+                          file.type === "application/pdf" || file.name.endsWith(".pdf"),
+                      );
+                      if (selectedFiles.length > 0) {
+                        setFiles(selectedFiles);
                         setError("");
                       }
                     }}
                   />
-                  {file ? (
+                  {files.length > 0 ? (
                     <div>
-                      <p className="text-indigo-600 font-medium">{file.name}</p>
+                      <p className="text-indigo-600 font-medium">
+                        {files.length} PDF{files.length > 1 ? "s" : ""} selected
+                      </p>
                       <p className="text-xs text-slate-500 mt-1">
-                        {(file.size / 1024).toFixed(1)} KB
+                        {files.map((file) => file.name).join(", ")}
+                      </p>
+                      <p className="text-xs text-slate-500 mt-1">
+                        {(
+                          files.reduce((total, file) => total + file.size, 0) / 1024
+                        ).toFixed(1)} KB total
                       </p>
                     </div>
                   ) : (
@@ -245,11 +267,31 @@ export default function Home() {
                     AI
                   </div>
                   <p className="text-slate-700 pt-1">
-                    I found <strong>{preview.pageCount} pages</strong> in{" "}
-                    <strong>{preview.fileName}</strong>. Review the details
-                    below and edit anything I got wrong.
+                    I found <strong>{preview.pageCount} pages</strong> across{" "}
+                    <strong>{preview.fileCount ?? 1}</strong> file
+                    {(preview.fileCount ?? 1) > 1 ? "s" : ""}. Review the
+                    details below and edit anything I got wrong.
                   </p>
                 </div>
+
+                {preview.files && preview.files.length > 0 && (
+                  <div className="bg-slate-50 rounded-xl p-4 border space-y-2">
+                    <p className="text-xs font-medium text-slate-500">Files</p>
+                    <ul className="space-y-1">
+                      {preview.files.map((item, index) => (
+                        <li
+                          key={`${item.fileName}-${index}`}
+                          className="text-sm text-slate-700 flex justify-between gap-3"
+                        >
+                          <span className="truncate">{item.fileName}</span>
+                          <span className="text-slate-500 shrink-0">
+                            {item.pageCount} pg
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
                 <div className="bg-slate-50 rounded-xl p-4 space-y-3 border">
                   <div className="grid grid-cols-2 gap-3">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 
 type Job = {
@@ -12,6 +12,14 @@ type Job = {
 };
 
 export default function PaymentPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading payment…</div>}>
+      <PaymentPageContent />
+    </Suspense>
+  );
+}
+
+function PaymentPageContent() {
   const params = useSearchParams();
   const router = useRouter();
   const id = params.get("id");
@@ -28,7 +36,7 @@ export default function PaymentPage() {
       .then((d) => {
         if (d.job) setJob(d.job);
       })
-      .catch(() => {})
+      .catch(() => {});
   }, [id]);
 
   const handlePay = async () => {
@@ -39,11 +47,10 @@ export default function PaymentPage() {
       const res = await fetch("/api/payment", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, method, details: {} }),
+        body: JSON.stringify({ id, method }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Payment failed");
-      // on success go to queue
       router.push("/queue");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Payment failed");
@@ -77,15 +84,15 @@ export default function PaymentPage() {
                 <div className="text-sm text-slate-500">Payment method</div>
                 <div className="space-x-3 mt-2">
                   <label className="inline-flex items-center">
-                    <input type="radio" name="method" checked={method==="upi"} onChange={()=>setMethod("upi")} />
+                    <input type="radio" name="method" checked={method === "upi"} onChange={() => setMethod("upi")} />
                     <span className="ml-2">UPI</span>
                   </label>
                   <label className="inline-flex items-center">
-                    <input type="radio" name="method" checked={method==="debit"} onChange={()=>setMethod("debit")} />
+                    <input type="radio" name="method" checked={method === "debit"} onChange={() => setMethod("debit")} />
                     <span className="ml-2">Debit Card</span>
                   </label>
                   <label className="inline-flex items-center">
-                    <input type="radio" name="method" checked={method==="credit"} onChange={()=>setMethod("credit")} />
+                    <input type="radio" name="method" checked={method === "credit"} onChange={() => setMethod("credit")} />
                     <span className="ml-2">Credit Card</span>
                   </label>
                 </div>
@@ -95,7 +102,7 @@ export default function PaymentPage() {
 
               <div className="flex gap-3 mt-4">
                 <button onClick={() => router.back()} className="flex-1 border rounded-lg py-2">← Back</button>
-                <button onClick={handlePay} disabled={loading} className="flex-1 bg-green-600 text-white rounded-lg py-2">{loading?"Processing…":"Pay & Submit"}</button>
+                <button onClick={handlePay} disabled={loading} className="flex-1 bg-green-600 text-white rounded-lg py-2">{loading ? "Processing…" : "Pay & Submit"}</button>
               </div>
             </div>
           ) : (

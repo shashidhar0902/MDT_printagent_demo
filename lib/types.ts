@@ -17,6 +17,8 @@ export interface PrintJob {
   id: string;
   studentName: string;
   fileName: string;
+  fileNames?: string[];
+  fileCount?: number;
   pageCount: number;
   copies: number;
   colorMode: ColorMode;
@@ -32,4 +34,9 @@ export interface ParsedPreview {
   pageCount: number;
   spec: PrintSpec;
   fileName: string;
+  fileCount?: number;
+  files?: Array<{
+    fileName: string;
+    pageCount: number;
+  }>;
 }

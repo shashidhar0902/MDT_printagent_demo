@@ -2,11 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { getJob } from "@/lib/db";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
-    const url = new URL(request.url);
-    const id = url.searchParams.get("id");
+    const id = request.nextUrl.searchParams.get("id");
     if (!id) {
       return NextResponse.json({ error: "Missing id" }, { status: 400 });
     }

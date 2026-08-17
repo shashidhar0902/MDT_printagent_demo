@@ -9,12 +9,30 @@ function ensureDb(): PrintJob[] {
   if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
   }
-  if (!fs.existsSync(DB_FILE)) {
+
+  if (!fs.existsSync(DB_FILE) || fs.statSync(DB_FILE).size === 0) {
     fs.writeFileSync(DB_FILE, "[]", "utf-8");
     return [];
   }
-  const raw = fs.readFileSync(DB_FILE, "utf-8");
-  return JSON.parse(raw) as PrintJob[];
+
+  try {
+    const raw = fs.readFileSync(DB_FILE, "utf-8").trim();
+    if (!raw) {
+      fs.writeFileSync(DB_FILE, "[]", "utf-8");
+      return [];
+    }
+
+    const parsed = JSON.parse(raw) as PrintJob[];
+    if (!Array.isArray(parsed)) {
+      throw new Error("jobs.json does not contain an array");
+    }
+
+    return parsed;
+  } catch (error) {
+    console.error("Invalid jobs database, resetting to empty state:", error);
+    fs.writeFileSync(DB_FILE, "[]", "utf-8");
+    return [];
+  }
 }
 
 function writeDb(jobs: PrintJob[]): void {

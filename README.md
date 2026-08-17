@@ -1,6 +1,6 @@
 # PrintAgent AI
 
-A working prototype for smart campus print ordering. Students upload a PDF, describe what they need in natural language, get a parsed quote, confirm with mock payment, and the job appears on an operator queue dashboard.
+A working prototype for smart campus print ordering. Students upload one or more PDFs, describe what they need in natural language, get a parsed quote, confirm with mock payment, and the job appears on an operator queue dashboard.
 
 ## Quick start
 
@@ -15,7 +15,7 @@ Open [http://localhost:3000/queue](http://localhost:3000/queue) for the operator
 
 ## Demo flow
 
-1. Enter your name and drop a PDF
+1. Enter your name and drop one or more PDFs
 2. Type instructions like: `3 copies, back to back, color, need it urgently`
 3. Review the parsed spec (editable), click **Confirm & Pay (Mock)**
 4. See cost + mock UPI reference

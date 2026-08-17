@@ -6,7 +6,7 @@ export const runtime = "nodejs";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { id, method, details } = body;
+    const { id, method } = body;
 
     if (!id || !method) {
       return NextResponse.json({ error: "Missing payment fields" }, { status: 400 });
