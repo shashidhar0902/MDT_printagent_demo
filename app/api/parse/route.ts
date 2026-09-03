@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PDFDocument } from "pdf-lib";
-import { extractPrintSpec } from "@/lib/anthropic";
+import { extractPrintSpec } from "@/lib/gemini";
 import {
   MAX_FILE_SIZE_BYTES,
   MAX_PAGES_PER_ORDER,
@@ -82,9 +82,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         error:
-          "Failed to parse instructions. Try rephrasing or edit the fields manually.",
+          error instanceof Error
+            ? error.message
+            : "Failed to parse instructions. Try again or edit the fields manually.",
       },
-      { status: 500 },
+      { status: 502 },
     );
   }
 }
