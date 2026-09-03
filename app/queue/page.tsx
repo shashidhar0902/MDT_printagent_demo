@@ -15,15 +15,24 @@ function statusBadge(status: PrintJob["status"]) {
     pending_payment: "bg-yellow-100 text-yellow-800",
     queued: "bg-blue-100 text-blue-800",
     printing: "bg-purple-100 text-purple-800",
-    done: "bg-green-100 text-green-800",
+    ready: "bg-amber-100 text-amber-800",
+    collected: "bg-green-100 text-green-800",
+    cancelled: "bg-red-100 text-red-800",
   };
   return styles[status];
 }
+
+const nextStatus: Partial<Record<PrintJob["status"], PrintJob["status"]>> = {
+  queued: "printing",
+  printing: "ready",
+  ready: "collected",
+};
 
 export default function QueuePage() {
   const [jobs, setJobs] = useState<PrintJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   const fetchQueue = useCallback(async () => {
     try {
@@ -39,6 +48,20 @@ export default function QueuePage() {
       setLoading(false);
     }
   }, []);
+
+  const updateStatus = async (id: string, status: PrintJob["status"]) => {
+    setUpdatingId(id);
+    try {
+      const res = await fetch("/api/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status }),
+      });
+      if (res.ok) await fetchQueue();
+    } finally {
+      setUpdatingId(null);
+    }
+  };
 
   useEffect(() => {
     fetchQueue();
@@ -110,6 +133,7 @@ export default function QueuePage() {
                   <th className="text-left px-4 py-3 font-medium text-slate-600">
                     Status
                   </th>
+                  <th className="text-right px-4 py-3 font-medium text-slate-600">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -124,10 +148,12 @@ export default function QueuePage() {
                   >
                     <td className="px-4 py-3 font-medium">{job.studentName}</td>
                     <td className="px-4 py-3 text-slate-600 max-w-[140px] truncate">
-                      {job.fileName}
+                      <div>{job.fileName}</div>
+                      <div className="text-xs text-slate-400">{job.machineId ?? "machine pending"}</div>
                     </td>
                     <td className="px-4 py-3 text-slate-600">
-                      {specSummary(job)}
+                      <div>{specSummary(job)}</div>
+                      <div className="text-xs text-slate-400">{job.printPlan?.summary ?? "Print plan from original order"}</div>
                     </td>
                     <td className="px-4 py-3">
                       {job.urgency === "urgent" ? (
@@ -147,6 +173,26 @@ export default function QueuePage() {
                       >
                         {job.status.replace("_", " ")}
                       </span>
+                    </td>
+                    <td className="px-4 py-3 text-right whitespace-nowrap">
+                      {nextStatus[job.status] && (
+                        <button
+                          onClick={() => updateStatus(job.id, nextStatus[job.status]!)}
+                          disabled={updatingId === job.id}
+                          className="rounded bg-slate-900 px-2 py-1 text-xs font-medium text-white disabled:opacity-50"
+                        >
+                          {updatingId === job.id ? "Saving..." : nextStatus[job.status]}
+                        </button>
+                      )}
+                      {(job.status === "queued" || job.status === "printing" || job.status === "ready") && (
+                        <button
+                          onClick={() => updateStatus(job.id, "cancelled")}
+                          disabled={updatingId === job.id}
+                          className="ml-2 rounded border border-red-200 px-2 py-1 text-xs font-medium text-red-700 disabled:opacity-50"
+                        >
+                          Cancel
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

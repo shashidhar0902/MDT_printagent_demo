@@ -26,7 +26,7 @@ function parseJsonResponse(text: string): PrintSpec {
   return {
     copies: Math.max(1, Number(parsed.copies) || DEFAULTS.copies),
     colorMode: parsed.colorMode === "color" ? "color" : "bw",
-    duplex: parsed.duplex ?? DEFAULTS.duplex,
+    duplex: typeof parsed.duplex === "boolean" ? parsed.duplex : DEFAULTS.duplex,
     urgency: parsed.urgency === "urgent" ? "urgent" : "standard",
   };
 }

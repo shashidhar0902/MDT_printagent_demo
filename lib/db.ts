@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import type { JobStatus, PrintJob } from "./types";
+import { CANCELLED_RETENTION_MS, PAYMENT_TIMEOUT_MS } from "./agents";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const DB_FILE = path.join(DATA_DIR, "jobs.json");
@@ -42,26 +43,52 @@ function writeDb(jobs: PrintJob[]): void {
   fs.writeFileSync(DB_FILE, JSON.stringify(jobs, null, 2), "utf-8");
 }
 
+function expireJobs(jobs: PrintJob[]): PrintJob[] {
+  const now = Date.now();
+  const activeJobs = jobs.map((job) => {
+    if (
+      job.status === "pending_payment" &&
+      now - new Date(job.createdAt).getTime() >= PAYMENT_TIMEOUT_MS
+    ) {
+      return { ...job, status: "cancelled" as const, cancelledAt: new Date(now).toISOString() };
+    }
+    return job;
+  });
+
+  return activeJobs.filter(
+    (job) =>
+      !(job.status === "cancelled" &&
+        job.cancelledAt &&
+        now - new Date(job.cancelledAt).getTime() >= CANCELLED_RETENTION_MS),
+  );
+}
+
 export function createJob(job: PrintJob): PrintJob {
-  const jobs = ensureDb();
+  const jobs = expireJobs(ensureDb());
   jobs.push(job);
   writeDb(jobs);
   return job;
 }
 
 export function updateJobStatus(id: string, status: JobStatus): PrintJob | null {
-  const jobs = ensureDb();
+  const jobs = expireJobs(ensureDb());
   const index = jobs.findIndex((j) => j.id === id);
   if (index === -1) return null;
+  if (status === "collected") {
+    jobs.splice(index, 1);
+    writeDb(jobs);
+    return null;
+  }
   jobs[index] = { ...jobs[index], status };
   writeDb(jobs);
   return jobs[index];
 }
 
 export function getQueue(): PrintJob[] {
-  const jobs = ensureDb();
+  const jobs = expireJobs(ensureDb());
+  writeDb(jobs);
   return jobs
-    .filter((j) => j.status === "queued" || j.status === "printing")
+    .filter((j) => j.status !== "collected")
     .sort((a, b) => {
       if (a.urgency !== b.urgency) {
         return a.urgency === "urgent" ? -1 : 1;
@@ -71,6 +98,7 @@ export function getQueue(): PrintJob[] {
 }
 
 export function getJob(id: string): PrintJob | null {
-  const jobs = ensureDb();
+  const jobs = expireJobs(ensureDb());
+  writeDb(jobs);
   return jobs.find((j) => j.id === id) ?? null;
 }

@@ -16,6 +16,10 @@ interface PreviewData {
     fileName: string;
     pageCount: number;
   }>;
+  printPlan?: {
+    summary: string;
+    machineId: string;
+  };
 }
 
 export default function Home() {
@@ -294,6 +298,11 @@ export default function Home() {
                 )}
 
                 <div className="bg-slate-50 rounded-xl p-4 space-y-3 border">
+                  {preview.printPlan && (
+                    <div className="text-sm text-slate-600 border-b pb-3">
+                      <strong>Print plan:</strong> {preview.printPlan.summary} on {preview.printPlan.machineId}
+                    </div>
+                  )}
                   <div className="grid grid-cols-2 gap-3">
                     <Field
                       label="Copies"

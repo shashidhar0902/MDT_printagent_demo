@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PDFDocument } from "pdf-lib";
 import { extractPrintSpec } from "@/lib/anthropic";
+import {
+  MAX_FILE_SIZE_BYTES,
+  MAX_PAGES_PER_ORDER,
+  createPrintPlan,
+} from "@/lib/agents";
 
 export const runtime = "nodejs";
 
@@ -17,7 +22,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "PDF file is required" }, { status: 400 });
     }
 
+    if (uploadedFiles.length > 20 || instructions.length > 4000) {
+      return NextResponse.json({ error: "Too many files or instructions are too long" }, { status: 400 });
+    }
+
     const files: Array<{ fileName: string; pageCount: number }> = [];
+
+    const totalSize = uploadedFiles.reduce((total, file) => total + file.size, 0);
+    if (totalSize > MAX_FILE_SIZE_BYTES) {
+      return NextResponse.json({ error: "The total PDF upload exceeds the 100 MB limit" }, { status: 413 });
+    }
 
     for (const file of uploadedFiles) {
       if (file.type !== "application/pdf" && !file.name.endsWith(".pdf")) {
@@ -47,11 +61,17 @@ export async function POST(request: NextRequest) {
 
     const pageCount = files.reduce((total, current) => total + current.pageCount, 0);
 
+    if (pageCount < 1 || pageCount > MAX_PAGES_PER_ORDER) {
+      return NextResponse.json({ error: "An order must contain between 1 and 1,000 pages" }, { status: 400 });
+    }
+
     const spec = await extractPrintSpec(instructions);
+    const printPlan = createPrintPlan(spec);
 
     return NextResponse.json({
       pageCount,
       spec,
+      printPlan,
       fileName:
         files.length === 1 ? files[0].fileName : `${files.length} files uploaded`,
       fileCount: files.length,

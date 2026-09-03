@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createJob } from "@/lib/db";
 import { calculateCost } from "@/lib/pricing";
 import type { ColorMode, PrintJob, Urgency } from "@/lib/types";
+import { MAX_PAGES_PER_ORDER, createPrintPlan } from "@/lib/agents";
 import { randomUUID } from "crypto";
 
 export const runtime = "nodejs";
@@ -38,7 +39,15 @@ export async function POST(request: NextRequest) {
     const displayFileName =
       resolvedFileCount > 1 ? `${resolvedFileCount} files` : resolvedFileName;
 
-    if (!studentName || !pageCount) {
+    const numericPageCount = Number(pageCount);
+    const numericCopies = Number(copies);
+    if (
+      typeof studentName !== "string" || !studentName.trim() ||
+      !Number.isInteger(numericPageCount) || numericPageCount < 1 || numericPageCount > MAX_PAGES_PER_ORDER ||
+      !Number.isInteger(numericCopies) || numericCopies < 1 || numericCopies > 100 ||
+      (colorMode !== "bw" && colorMode !== "color") ||
+      typeof duplex !== "boolean" || (urgency !== "standard" && urgency !== "urgent")
+    ) {
       return NextResponse.json(
         { error: "Missing required job fields" },
         { status: 400 },
@@ -46,15 +55,21 @@ export async function POST(request: NextRequest) {
     }
 
     const costInRupees = calculateCost({
-      pageCount: Number(pageCount),
-      copies: Number(copies) || 1,
-      colorMode: (colorMode as ColorMode) || "bw",
-      duplex: duplex ?? true,
-      urgency: (urgency as Urgency) || "standard",
+      pageCount: numericPageCount,
+      copies: numericCopies,
+      colorMode: colorMode as ColorMode,
+      duplex,
+      urgency: urgency as Urgency,
     });
 
     const upiReference = mockUpiReference();
     const id = randomUUID();
+    const printPlan = createPrintPlan({
+      copies: numericCopies,
+      colorMode: colorMode as ColorMode,
+      duplex,
+      urgency: urgency as Urgency,
+    });
 
     const job: PrintJob = {
       id,
@@ -71,6 +86,8 @@ export async function POST(request: NextRequest) {
       status: "pending_payment",
       createdAt: new Date().toISOString(),
       upiReference,
+      printPlan,
+      machineId: printPlan.machineId,
     };
 
     createJob(job);

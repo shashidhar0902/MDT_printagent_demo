@@ -17,9 +17,9 @@ Open [http://localhost:3000/queue](http://localhost:3000/queue) for the operator
 
 1. Enter your name and drop one or more PDFs
 2. Type instructions like: `3 copies, back to back, color, need it urgently`
-3. Review the parsed spec (editable), click **Confirm & Pay (Mock)**
-4. See cost + mock UPI reference
-5. Switch to `/queue` — job appears at top if urgent
+3. Review the agent-generated print plan (editable), click **Confirm & Pay (Mock)**
+4. Complete the mock payment; the job enters the queue
+5. Open `/queue` and move each job through `printing`, `ready`, and `collected`
 
 ## Tech stack
 
@@ -28,6 +28,14 @@ Open [http://localhost:3000/queue](http://localhost:3000/queue) for the operator
 - **pdf-lib** for PDF page counting
 - **JSON file store** (`data/jobs.json`) for the ledger/queue (SQLite planned upgrade)
 
+## Demo operating rules
+
+- The total PDF upload limit is 100 MB and an order may contain at most 1,000 pages.
+- The instruction agent extracts copies, color, sides, and urgency, then the machine agent routes color jobs to `color-1` and alternates B&W jobs between `bw-1` and `bw-2`.
+- Mock payment queues every paid-in-demo order.
+- Unpaid orders become `cancelled` after 10 minutes. Cancelled orders are removed after 10 hours when the app receives a request; localhost does not run a background scheduler.
+- Operators can move jobs through `queued`, `printing`, `ready`, `collected`, or `cancelled`. Marking a job `collected` removes it from the ledger immediately.
+
 ## API routes
 
 | Route | Method | Purpose |
@@ -35,6 +43,7 @@ Open [http://localhost:3000/queue](http://localhost:3000/queue) for the operator
 | `/api/parse` | POST | Upload PDF + instructions → page count + parsed spec |
 | `/api/confirm` | POST | Confirm job → cost calc, ledger write, mock payment |
 | `/api/queue` | GET | Current print queue |
+| `/api/status` | POST | Operator status transition |
 
 ## Planned upgrades (commit-by-commit)
 

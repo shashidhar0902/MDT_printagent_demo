@@ -4,13 +4,22 @@ export type JobStatus =
   | "pending_payment"
   | "queued"
   | "printing"
-  | "done";
+  | "ready"
+  | "collected"
+  | "cancelled";
+
+export type MachineId = "color-1" | "bw-1" | "bw-2";
 
 export interface PrintSpec {
   copies: number;
   colorMode: ColorMode;
   duplex: boolean;
   urgency: Urgency;
+}
+
+export interface PrintPlan extends PrintSpec {
+  summary: string;
+  machineId: MachineId;
 }
 
 export interface PrintJob {
@@ -24,9 +33,12 @@ export interface PrintJob {
   colorMode: ColorMode;
   duplex: boolean;
   urgency: Urgency;
+  printPlan?: PrintPlan;
+  machineId?: MachineId;
   costInRupees: number;
   status: JobStatus;
   createdAt: string;
+  cancelledAt?: string;
   upiReference?: string;
 }
 
